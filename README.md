@@ -1,6 +1,10 @@
 # Yaesu SD Card Manager (Python)
 
-This repository contains a multi-platform AI supported rewrite of the original Win32 Yaesu SD card manager (https://github.com/msraya/yaesuman). It mirrors the legacy functionality:
+DISCLAIMER: This is still in development. Use at your own risk. Never use it on not backed up data.
+
+This repository contains a multi-platform AI supported rewrite of the original Win32 Yaesu SD card manager (https://github.com/msraya/yaesuman). It is supposed to store own pictures and messages on the SD card of Yaesu FT-5d (probably also other Yaesu radios like FT-3d).
+
+It mirrors the legacy functionality:
 
 - load every DAT file set inside the `QSOLOG` folder and keep the message/picture lists in memory
 - edit message subjects and text, insert new blank messages, delete or deduplicate entries
@@ -37,3 +41,5 @@ On startup the program asks for any `.DAT` file inside the SD card’s `QSOLOG` 
 ## Thanks
 
 Thanks to @msraya for working on the Windows app and doing significant work on reengineering the way Yaesu stores data on SD cards.
+
+DO1HOZ (https://www.qrz.com/db/DO1HOZ)
