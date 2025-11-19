@@ -11,7 +11,7 @@ It mirrors the legacy functionality:
 - insert resized pictures (160×120 for `LOW`, 320×240 for `MID`) and write them into the radio’s `PHOTO` folder with the expected naming pattern
 - edit each new picture in a small overlay editor that lets you place the configured callsign as a text overlay (with draggable position, color, and size) plus an optional QR code generated from the configured URL before saving
 - inspect pictures, edit their subjects, delete or deduplicate them
-- open the stored GPS coordinates in a browser via Google Maps
+- open the stored GPS coordinates in a browser via Google Maps or update your default GPS string via the configuration dialog’s “Pick location…” geocoding helper
 - persist changes back to `QSOMNG.DAT`, `QSOMSG*.DAT`, and `QSOPCT*.DAT` when saving
 - keep call sign / GPS / quality settings in a config dialog (now stored under `~/.yaesuman/config.json` instead of the Windows registry)
 
@@ -21,15 +21,20 @@ It mirrors the legacy functionality:
 - Tkinter (ships with the standard CPython builds)
 - Pillow (`pip install -r requirements.txt`)
 - qrcode (`pip install -r requirements.txt`)
+- geopy (`pip install -r requirements.txt`, required for the GPS location picker)
 
 ## Running
 
 ```bash
-cd python
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 python app.py
 ```
 
 On startup the program asks for any `.DAT` file inside the SD card’s `QSOLOG` directory.  After editing, click **Save and Exit** or use **File → Save** to write the updated binary files back to the card.  The picture insert action prompts for a JPEG, takes you through the overlay editor (configure text color/size/position and optionally a QR code generated from the URL configured in the **Configuration** dialog), and finally stores the merged JPEG into the SD card’s `PHOTO` directory.
+
+Use **Configuration** to set your callsign, the fixed GPS string, quality preference, and overlay URL.  The GPS picker lets you search for any city/address (OpenStreetMap/Nominatim) and automatically formats the coordinates into Yaesu’s 20-character representation.
 
 ## Notes
 
