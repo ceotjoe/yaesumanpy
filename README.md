@@ -1,6 +1,6 @@
 # Yaesu SD Card Manager (Python)
 
-This folder contains a multi-platform rewrite of the original Win32 Yaesu SD card manager.  It mirrors the legacy functionality:
+This repository contains a multi-platform AI supported rewrite of the original Win32 Yaesu SD card manager (https://github.com/msraya/yaesuman). It mirrors the legacy functionality:
 
 - load every DAT file set inside the `QSOLOG` folder and keep the message/picture lists in memory
 - edit message subjects and text, insert new blank messages, delete or deduplicate entries
@@ -31,3 +31,9 @@ On startup the program asks for any `.DAT` file inside the SD card’s `QSOLOG` 
 
 - The Windows-only registry settings have been replaced with a JSON config file inside the user’s home directory to keep the application platform-independent.  This dialog now also stores the optional overlay URL that powers the QR code in the picture editor.
 - The built-in image viewer uses Pillow; no extra OS-specific codecs are required.
+- The rewrite was completly done with only using codex (https://openai.com/de-DE/codex/) of OpenAI. It converted the original C++ Windows program to Python within only about 15 minutes, which is quite amazing.
+- Reason for this port was to have a multi platform solution instead of a Windows only program.
+
+## Thanks
+
+Thanks to @msraya for working on the Windows app and doing significant work on reengineering the way Yaesu stores data on SD cards.
