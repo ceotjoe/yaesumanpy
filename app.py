@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import math
 import sys
+import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
@@ -423,6 +425,7 @@ class YaesuManagerApp:
         dialog.title("Configuration")
         dialog.transient(self.root)
         dialog.grab_set()
+        dialog.columnconfigure(1, weight=1)
 
         ttk.Label(dialog, text="Call Sign:").grid(row=0, column=0, sticky="e", padx=5, pady=5)
         call_var = tk.StringVar(value=self.config.callsign)
@@ -430,7 +433,12 @@ class YaesuManagerApp:
 
         ttk.Label(dialog, text="GPS (20 chars):").grid(row=1, column=0, sticky="e", padx=5, pady=5)
         gps_var = tk.StringVar(value=self.config.gps)
-        ttk.Entry(dialog, textvariable=gps_var).grid(row=1, column=1, padx=5, pady=5)
+        ttk.Entry(dialog, textvariable=gps_var).grid(row=1, column=1, padx=5, pady=5, sticky="ew")
+        ttk.Button(
+            dialog,
+            text="Pick location...",
+            command=lambda: self._open_location_picker(dialog, gps_var),
+        ).grid(row=1, column=2, padx=5, pady=5)
 
         ttk.Label(dialog, text="Picture Quality:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
         quality_var = tk.StringVar(value=self.config.quality)
@@ -455,6 +463,111 @@ class YaesuManagerApp:
 
         ttk.Button(dialog, text="OK", command=_apply).grid(row=4, column=0, padx=5, pady=10)
         ttk.Button(dialog, text="Cancel", command=dialog.destroy).grid(row=4, column=1, padx=5, pady=10)
+
+    def _open_location_picker(self, parent: tk.Toplevel, gps_var: tk.StringVar) -> None:
+        try:
+            from geopy.geocoders import Nominatim
+        except ImportError:
+            messagebox.showerror(
+                "Missing dependency",
+                "The geopy package is required for location search.\n"
+                "Install it with `pip install geopy` and try again.",
+            )
+            return
+
+        picker = tk.Toplevel(parent)
+        picker.title("Search location")
+        picker.transient(parent)
+        picker.grab_set()
+        picker.columnconfigure(1, weight=1)
+        picker.rowconfigure(1, weight=1)
+
+        query_var = tk.StringVar()
+        status_var = tk.StringVar(value="Enter a city or address and press Search.")
+        results: list = []
+        geolocator = Nominatim(user_agent="yaesumanpy")
+
+        ttk.Label(picker, text="Query:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        search_entry = ttk.Entry(picker, textvariable=query_var)
+        search_entry.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        search_button = ttk.Button(picker, text="Search")
+        search_button.grid(row=0, column=2, padx=5, pady=5)
+
+        result_list = tk.Listbox(picker, height=8)
+        result_list.grid(row=1, column=0, columnspan=3, padx=5, pady=5, sticky="nsew")
+        result_scroll = ttk.Scrollbar(picker, orient=tk.VERTICAL, command=result_list.yview)
+        result_scroll.grid(row=1, column=3, sticky="ns", pady=5)
+        result_list.configure(yscrollcommand=result_scroll.set)
+
+        ttk.Label(picker, textvariable=status_var, foreground="gray").grid(
+            row=2, column=0, columnspan=3, padx=5, pady=(0, 5), sticky="w"
+        )
+
+        action_frame = ttk.Frame(picker)
+        action_frame.grid(row=3, column=0, columnspan=3, pady=5)
+        ttk.Button(action_frame, text="Use location", command=lambda: _apply_selection()).pack(
+            side=tk.LEFT, padx=5
+        )
+        ttk.Button(action_frame, text="Cancel", command=picker.destroy).pack(side=tk.LEFT, padx=5)
+
+        def _finish_search(locations, error=None):
+            nonlocal results
+            search_button.config(state="normal")
+            result_list.delete(0, tk.END)
+            if error:
+                status_var.set(f"Lookup failed: {error}")
+                return
+            if not locations:
+                status_var.set("No matches found.")
+                results = []
+                return
+            results = locations
+            for loc in results:
+                description = f"{loc.address} ({loc.latitude:.4f}, {loc.longitude:.4f})"
+                result_list.insert(tk.END, description)
+            status_var.set("Select a result and click Use location.")
+
+        def _search_location(event=None):
+            query = query_var.get().strip()
+            if not query:
+                status_var.set("Please enter a city, address, or landmark.")
+                return
+            status_var.set("Searching...")
+            search_button.config(state="disabled")
+            result_list.delete(0, tk.END)
+
+            def _worker():
+                try:
+                    locations = geolocator.geocode(query, exactly_one=False, limit=10, addressdetails=False)
+                except Exception as exc:
+                    picker.after(0, lambda: _finish_search(None, error=exc))
+                else:
+                    picker.after(0, lambda: _finish_search(locations))
+
+            threading.Thread(target=_worker, daemon=True).start()
+
+        def _apply_selection(event=None):
+            if not results:
+                status_var.set("Search for a location first.")
+                return
+            selection = result_list.curselection()
+            if not selection:
+                status_var.set("Select a result to use.")
+                return
+            loc = results[selection[0]]
+            try:
+                gps_text = self._decimal_to_gps(float(loc.latitude), float(loc.longitude))
+            except (TypeError, ValueError):
+                status_var.set("Unable to convert the selected coordinates.")
+                return
+            gps_var.set(gps_text)
+            picker.destroy()
+
+        search_button.configure(command=_search_location)
+        search_entry.bind("<Return>", _search_location)
+        result_list.bind("<Double-Button-1>", _apply_selection)
+        picker.protocol("WM_DELETE_WINDOW", picker.destroy)
+        search_entry.focus_set()
 
     # ------------------------------------------------------------------
     def _ensure_loaded(self) -> bool:
@@ -490,6 +603,26 @@ class YaesuManagerApp:
     def _clear_image(self) -> None:
         self.display_image = None
         self.image_label.configure(image="", text="No image loaded")
+
+    @staticmethod
+    def _decimal_to_gps(lat: float, lon: float) -> str:
+        if not (math.isfinite(lat) and math.isfinite(lon)):
+            raise ValueError("Invalid coordinates")
+
+        def _encode(value: float, pos: str, neg: str, max_deg: int) -> tuple[str, int, int]:
+            hemi = pos if value >= 0 else neg
+            value = abs(value)
+            deg = int(value)
+            minutes = (value - deg) * 60.0
+            minute_scaled = int(round(minutes * 10000))
+            if minute_scaled >= 600000:
+                minute_scaled = 0
+                deg = min(deg + 1, max_deg)
+            return hemi, deg, minute_scaled
+
+        lat_part = _encode(lat, "N", "S", 90)
+        lon_part = _encode(lon, "E", "W", 180)
+        return f"{lat_part[0]}{lat_part[1]:03d}{lat_part[2]:06d}{lon_part[0]}{lon_part[1]:03d}{lon_part[2]:06d}"
 
     def _open_google_maps(self, position: str) -> None:
         if not position or position.startswith("-"):

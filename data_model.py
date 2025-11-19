@@ -95,8 +95,9 @@ def _format_position(raw: Sequence[int]) -> str:
     try:
         lat_deg = int(data[1:4].decode("ascii"))
         lon_deg = int(data[11:14].decode("ascii"))
-        lat_min = float(data[4:10].decode("ascii"))
-        lon_min = float(data[14:20].decode("ascii"))
+        # The radio stores minutes as a fixed-point value with four decimals.
+        lat_min = int(data[4:10].decode("ascii")) / 10000.0
+        lon_min = int(data[14:20].decode("ascii")) / 10000.0
     except (ValueError, UnicodeDecodeError):
         return "-:-- --' --\" / -:-- --' --\""
 
